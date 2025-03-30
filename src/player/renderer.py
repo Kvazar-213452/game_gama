@@ -8,38 +8,69 @@ class PlayerRenderer:
         self.ui_font = pygame.font.SysFont('Arial', 24, bold=True)
 
     def draw_player(self, player, screen, camera_offset=(0, 0)):
-        frames = player.animation_manager.get_animation(player.state)
-        if not frames:
+        if not player.is_alive and player.state != "death":
             return
             
-        current_frame = frames[player.frame % len(frames)]
+        if player.state == "death":
+            frames = player.animation_manager.get_animation("death")
+            if frames and player.frame < len(frames):
+                current_frame = frames[player.frame]
+            else:
+                return  # Анімація смерті завершена
+        else:
+            if player.is_hurt:
+                frames = player.animation_manager.get_animation("hurt")
+            else:
+                frames = player.animation_manager.get_animation(player.state)
+            
+            if not frames:
+                return
+                
+            current_frame = frames[player.frame % len(frames)]
+        
         if not player.facing_right:
             current_frame = pygame.transform.flip(current_frame, True, False)
+        
+        if player.is_hurt and player.frame % 2 == 0:
+            current_frame = self.apply_hurt_effect(current_frame)
+        
+        # Додаємо ефект напівпрозорості для мертвих гравців
+        if not player.is_alive:
+            current_frame = self.apply_death_effect(current_frame)
         
         screen.blit(current_frame, (
             player.rect.x + camera_offset[0],
             player.rect.y + camera_offset[1]
         ))
 
-        hp_bar_y = player.rect.y + camera_offset[1] - 40
-        name_y = player.rect.y + camera_offset[1] - 80
-        
-        name_text = self.name_font.render(player.name, True, (255, 255, 255))
-        screen.blit(name_text, (
-            player.rect.centerx + camera_offset[0] - name_text.get_width()//2,
-            name_y
-        ))
-        
-        self.draw_hp_bar(player, screen, 
-                        player.rect.centerx + camera_offset[0], 
-                        hp_bar_y)
-        
-        if player.is_attacking:
-            state_text = self.state_font.render("ATTACKING!", True, (255, 50, 50))
-            screen.blit(state_text, (
-                player.rect.centerx + camera_offset[0] - state_text.get_width()//2,
-                name_y - 20
+        # Не малюємо UI для мертвих гравців
+        if player.is_alive:
+            hp_bar_y = player.rect.y + camera_offset[1] - 40
+            name_y = player.rect.y + camera_offset[1] - 80
+            
+            name_text = self.name_font.render(player.name, True, (255, 255, 255))
+            screen.blit(name_text, (
+                player.rect.centerx + camera_offset[0] - name_text.get_width()//2,
+                name_y
             ))
+            
+            self.draw_hp_bar(player, screen, 
+                            player.rect.centerx + camera_offset[0], 
+                            hp_bar_y)
+            
+            if player.is_attacking:
+                state_text = self.state_font.render("ATTACKING!", True, (255, 50, 50))
+                screen.blit(state_text, (
+                    player.rect.centerx + camera_offset[0] - state_text.get_width()//2,
+                    name_y - 20
+                ))
+
+    def apply_death_effect(self, surface):
+        """Застосовує напівпрозорість для мертвих гравців"""
+        death_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        death_surface.blit(surface, (0, 0))
+        death_surface.fill((255, 255, 255, 128), special_flags=pygame.BLEND_RGBA_MULT)
+        return death_surface
 
     def draw_hp_bar(self, player, screen, x, y):
         hp_width = 60
@@ -64,3 +95,11 @@ class PlayerRenderer:
         if player.is_attacking:
             attack_text = self.ui_font.render("ATTACKING!", True, (255, 0, 0))
             screen.blit(attack_text, (15, 45))
+
+    def apply_hurt_effect(self, surface):
+        hurt_surface = surface.copy()
+        red_mask = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        red_mask.fill((255, 0, 0, 128))  
+        hurt_surface.blit(red_mask, (0, 0), special_flags=pygame.BLEND_MULT)
+        
+        return hurt_surface

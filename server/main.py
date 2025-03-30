@@ -67,7 +67,7 @@ class GameServer:
                     "player_id": other_id,
                     "player_data": other_data
                 }) + '\n').encode('utf-8'))
-        
+            
         buffer = ""
         try:
             while self.running:
@@ -82,36 +82,54 @@ class GameServer:
                         message = json.loads(message)
                         
                         if message["type"] == "update":
-                            self.players[player_id] = {
-                                **self.players[player_id],
-                                **message["player_data"],
-                                "last_update": time.time()
-                            }
-                            
-                            self.broadcast({
-                                "type": "player_update",
-                                "player_id": player_id,
-                                "player_data": self.players[player_id]
-                            })
+                            if self.players[player_id].get("is_alive", True):
+                                self.players[player_id] = {
+                                    **self.players[player_id],
+                                    **message["player_data"],
+                                    "last_update": time.time()
+                                }
+                                
+                                self.broadcast({
+                                    "type": "player_update",
+                                    "player_id": player_id,
+                                    "player_data": self.players[player_id]
+                                })
 
                         elif message["type"] == "attack":
                             attacker_id = player_id
                             target_id = message["target_id"]
                             damage = message["damage"]
                             
-                            if target_id in self.players:
+                            if target_id in self.players and self.players[target_id].get("is_alive", True):
                                 self.players[target_id]["hp"] = max(0, self.players[target_id]["hp"] - damage)
                                 
-                                self.broadcast({
-                                    "type": "hp_update",
-                                    "player_id": target_id,
-                                    "hp": self.players[target_id]["hp"],
-                                    "attacker_id": attacker_id
-                                })
+                                if self.players[target_id]["hp"] <= 0:
+                                    self.players[target_id]["is_alive"] = False
+                                    self.players[target_id]["death_timer"] = 5
+                                    self.players[target_id]["state"] = "death"
+                                    
+                                    # Відправляємо повідомлення про смерть
+                                    self.broadcast({
+                                        "type": "player_death",
+                                        "player_id": target_id,
+                                        "respawn_time": 5
+                                    })
+                                    
+                                    # Запускаємо таймер для відродження
+                                    threading.Timer(5, self.respawn_player, [target_id]).start()
+                                else:
+                                    self.players[target_id]["is_hurt"] = True
+                                    self.players[target_id]["state"] = "hurt"
+                                    
+                                    self.broadcast({
+                                        "type": "hp_update",
+                                        "player_id": target_id,
+                                        "hp": self.players[target_id]["hp"],
+                                        "attacker_id": attacker_id,
+                                        "is_hurt": True
+                                    })
                                 
-                                print(f"{self.players[attacker_id].get('name', 'Unknown')} атакував {
-                                    self.players[target_id].get('name', 'Unknown')}! HP: {
-                                    self.players[target_id]['hp']}")
+                                print(f"{self.players[attacker_id].get('name', 'Unknown')} attacked {self.players[target_id].get('name', 'Unknown')}! HP: {self.players[target_id]['hp']}")
                     
                     except json.JSONDecodeError:
                         print("Invalid JSON received")
@@ -138,6 +156,20 @@ class GameServer:
                     print(f"Гравець {player_id} відключився")
                 except KeyError:
                     pass
+
+    def respawn_player(self, player_id):
+        if player_id in self.players:
+            self.players[player_id]["is_alive"] = True
+            self.players[player_id]["hp"] = 100
+            self.players[player_id]["state"] = "idle"
+            self.players[player_id]["frame"] = 0
+            
+            # Відправляємо повідомлення про відродження всім клієнтам
+            self.broadcast({
+                "type": "player_respawn",
+                "player_id": player_id,
+                "player_data": self.players[player_id]
+            })
     
     def start(self):
         while self.running:

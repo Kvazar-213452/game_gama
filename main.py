@@ -48,8 +48,14 @@ class GameClient:
         elif message["type"] == "hp_update":
             if message["player_id"] == getattr(self.player, 'id', None):
                 self.player.hp = message["hp"]
+                if message.get("is_hurt", False):
+                    self.player.is_hurt = True
+                    self.player.hurt_timer = self.player.hurt_duration
             elif message["player_id"] in self.other_players:
                 self.other_players[message["player_id"]].hp = message["hp"]
+                if message.get("is_hurt", False):
+                    self.other_players[message["player_id"]].is_hurt = True
+                    self.other_players[message["player_id"]].hurt_timer = self.player.hurt_duration
             
             if "attacker_id" in message:
                 attacker = self.player if message["attacker_id"] == getattr(self.player, 'id', None) \
@@ -59,6 +65,17 @@ class GameClient:
                 
                 if attacker and target:
                     print(f"{attacker.name} attacked {target.name}! HP: {message['hp']}")
+        
+        elif message["type"] == "player_death":
+            if message["player_id"] == getattr(self.player, 'id', None):
+                self.player.die()
+            elif message["player_id"] in self.other_players:
+                self.other_players[message["player_id"]].die()
+        
+        elif message["type"] == "player_respawn":
+            if message["player_id"] in self.other_players:
+                self.other_players[message["player_id"]].respawn()
+                self.other_players[message["player_id"]].update_from_data(message["player_data"])
         
         elif message["type"] == "player_left":
             if message["player_id"] in self.other_players:
@@ -111,7 +128,7 @@ class GameClient:
                 if event.type == pygame.QUIT:
                     self.running = False
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE and self.player and not self.player.is_jumping:
+                    if event.key == pygame.K_SPACE and self.player and not self.player.is_jumping and self.player.is_alive:
                         self.player.jump()
                 self.window.handle_event(event)
             
@@ -121,14 +138,17 @@ class GameClient:
             keys = pygame.key.get_pressed()
             
             if self.player:
-                self.player.handle_input(keys)
-                self.player.update(platforms)
-                
-                if self.player.is_attacking and self.player.frame == 3:
-                    self.check_attack()
-                
-                self.camera.update(self.player.rect)
-                self.send_update()
+                if self.player.is_alive:
+                    self.player.handle_input(keys)
+                    self.player.update(platforms, dt)
+                    
+                    if self.player.is_attacking and self.player.frame == 3:
+                        self.check_attack()
+                    
+                    self.camera.update(self.player.rect)
+                    self.send_update()
+                else:
+                    self.player.update(platforms, dt)  # Оновлюємо таймер смерті
             
             # Get current screen surface
             screen = self.window.get_screen()
@@ -138,10 +158,12 @@ class GameClient:
                 adjusted_rect = self.camera.apply(platform)
                 pygame.draw.rect(screen, (100, 100, 100), adjusted_rect)
             
-            for player in self.other_players.values():
-                player.draw(screen, self.camera.get_offset())
+            # Малюємо лише живих гравців
+            for player_id, player in list(self.other_players.items()):
+                if player.is_alive or player.state == "death":
+                    player.draw(screen, self.camera.get_offset())
             
-            if self.player:
+            if self.player and (self.player.is_alive or self.player.state == "death"):
                 self.player.draw(screen, self.camera.get_offset())
                 self.player.draw_ui(screen)
             

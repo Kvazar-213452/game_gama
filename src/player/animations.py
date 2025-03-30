@@ -7,7 +7,8 @@ class AnimationManager:
             "walk": {"frames": [], "count": 6},
             "jump": {"frames": [], "count": 8},
             "attack": {"frames": [], "count": 6},
-            "hurt": {"frames": [], "count": 4}
+            "hurt": {"frames": [], "count": 4},
+            "death": {"frames": [], "count": 8}
         }
         self.load_all_animations()
     
@@ -18,6 +19,7 @@ class AnimationManager:
             self.animations["jump"]["frames"] = self.load_animation("Jump.png", 8)
             self.animations["attack"]["frames"] = self.load_animation("Attack.png", 6)
             self.animations["hurt"]["frames"] = self.load_animation("Hurt.png", 4)
+            self.animations["death"]["frames"] = self.load_animation("Death.png", 8)
         except Exception as e:
             print(f"Помилка завантаження анімацій: {e}")
             self.create_placeholder_animations()

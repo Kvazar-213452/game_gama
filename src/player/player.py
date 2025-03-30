@@ -23,11 +23,18 @@ class Player:
         self.is_attacking = False
         self.attack_frame = 0
         self.attack_cooldown = 0
+        self.is_hurt = False
+        self.hurt_timer = 0
+        self.hurt_duration = 0.5
+
+        self.is_alive = True
+        self.death_timer = 0
+        self.respawn_time = 5
+        self.respawn_position = (x, y)
+        self.death_animation_played = False
 
         self.animation_manager = AnimationManager()
         self.renderer = PlayerRenderer()
-        
-        self.animation_manager = AnimationManager()
 
     def jump(self):
         if not self.is_jumping:
@@ -37,11 +44,32 @@ class Player:
             self.frame = 0
 
     def take_damage(self, amount):
+        if not self.is_alive:
+            return False
+            
         self.hp = max(0, self.hp - amount)
         self.is_hurt = True
-        self.last_hurt_time = pygame.time.get_ticks() / 1000
         self.hurt_timer = self.hurt_duration
-        return self.hp <= 0
+        
+        if self.hp <= 0:
+            self.die()
+            return True
+        return False
+
+    def die(self):
+        self.is_alive = False
+        self.death_timer = self.respawn_time
+        self.state = "death"
+        self.frame = 0
+        self.death_animation_played = False
+
+    def respawn(self):
+        self.is_alive = True
+        self.hp = self.max_hp
+        self.rect.x, self.rect.y = self.respawn_position
+        self.state = "idle"
+        self.frame = 0
+        self.death_animation_played = False
 
     def update_from_data(self, data):
         self.rect.x = data["x"]
@@ -53,6 +81,7 @@ class Player:
         self.hp = data.get("hp", 100)
         self.is_attacking = data.get("is_attacking", False)
         self.is_jumping = data.get("is_jumping", False)
+        self.is_hurt = data.get("is_hurt", False)
 
     def get_data(self):
         return {
@@ -63,7 +92,9 @@ class Player:
             "frame": self.frame,
             "name": self.name,
             "hp": self.hp,
-            "is_attacking": self.is_attacking
+            "is_attacking": self.is_attacking,
+            "is_jumping": self.is_jumping,
+            "is_hurt": self.is_hurt
         }
 
     def handle_input(self, keys):
@@ -88,21 +119,37 @@ class Player:
             self.frame = 0
             self.attack_cooldown = 30
 
-    def update(self, platforms):
+    def update(self, platforms, dt):
+        if not self.is_alive:
+            if not self.death_animation_played:
+                self.death_timer -= dt
+                if self.death_timer <= 0:
+                    self.respawn()
+
+        if self.is_hurt:
+            self.hurt_timer -= dt
+            if self.hurt_timer <= 0:
+                self.is_hurt = False
+                self.state = "idle"
+
         if self.attack_cooldown > 0:
             self.attack_cooldown -= 1
         
         current_time = pygame.time.get_ticks() / 1000
         if current_time - self.last_update > self.animation_speed:
             self.last_update = current_time
-            frames = self.animation_manager.get_animation(self.state)
+            if self.is_hurt:
+                frames = self.animation_manager.get_animation("hurt")
+            else:
+                frames = self.animation_manager.get_animation(self.state)
+                
             if frames:
                 self.frame = (self.frame + 1) % len(frames)
                 if self.state == "attack" and self.frame == 0:
                     self.is_attacking = False
                     self.state = "idle"
         
-        if not self.is_attacking:
+        if not self.is_attacking and not self.is_hurt:
             self.velocity_y += self.gravity
             self.rect.x += self.velocity_x
             self.rect.y += self.velocity_y
