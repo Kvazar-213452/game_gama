@@ -38,7 +38,7 @@ class GameServer:
         try:
             player_data = json.loads(name_data)
             player_name = player_data["name"]
-            player_skin = player_data.get("skin", "eblan")  # Отримуємо скін
+            player_skin = player_data.get("skin")
         except:
             player_name = f"Player{addr[1]%1000}"
             player_skin = "eblan"
@@ -52,7 +52,7 @@ class GameServer:
             "frame": 0,
             "last_update": time.time(),
             "name": player_name,
-            "skin": player_skin  # Зберігаємо скін
+            "skin": player_skin
         }
 
         self.leaderboard[player_id] = {
@@ -133,14 +133,12 @@ class GameServer:
                                     explosion_radius = 150
                                     damage = 80
                                     
-                                    # Відправляємо повідомлення про вибух всім клієнтам
                                     self.broadcast({
                                         "type": "explosion",
                                         "x": explosion_x,
                                         "y": explosion_y
                                     })
                                     
-                                    # Знаходимо гравців у радіусі вибуху
                                     for target_id, target_data in self.players.items():
                                         if target_id != player_id and target_data.get("is_alive", True):
                                             dx = target_data["x"] - explosion_x
@@ -182,22 +180,18 @@ class GameServer:
                                                     })
 
                                 elif card == "def_random":
-                                    # Вибираємо випадкового гравця (може бути і той, хто активував)
                                     all_player_ids = list(self.players.keys())
                                     if all_player_ids:
                                         target_id = random.choice(all_player_ids)
-                                        
-                                        # Вбиваємо випадкового гравця
+
                                         self.players[target_id]["hp"] = 0
                                         self.players[target_id]["is_alive"] = False
                                         self.players[target_id]["death_timer"] = 5
                                         self.players[target_id]["state"] = "death"
                                         
-                                        # Оновлюємо статистику
                                         killer_name = self.players[player_id].get("name", "Unknown")
                                         victim_name = self.players[target_id].get("name", "Unknown")
                                         
-                                        # Якщо гравець вбив сам себе
                                         if player_id == target_id:
                                             self.leaderboard[player_id]["deaths"] += 1
                                         else:
@@ -213,7 +207,7 @@ class GameServer:
                                             "type": "player_death",
                                             "player_id": target_id,
                                             "respawn_time": 5,
-                                            "clear_cards": True  # Додаємо прапорець для очищення карт
+                                            "clear_cards": True
                                         })
                                         
                                         print(f"{killer_name} викорав карту 'def_random' і вбив {victim_name}!")
@@ -310,7 +304,6 @@ class GameServer:
             self.players[player_id]["death_timer"] = 5
             self.players[player_id]["state"] = "death"
             
-            # Оновлюємо статистику
             if killer_id in self.leaderboard:
                 self.leaderboard[killer_id]["kills"] += 1
             if player_id in self.leaderboard:
@@ -321,7 +314,7 @@ class GameServer:
                 "player_id": player_id,
                 "respawn_time": 5,
                 "attacker_id": killer_id,
-                "clear_cards": True  # Додаємо прапорець для очищення карт
+                "clear_cards": True
             })
             
             threading.Timer(5, self.respawn_player, [player_id]).start()

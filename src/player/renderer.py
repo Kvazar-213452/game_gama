@@ -16,7 +16,7 @@ class PlayerRenderer:
             if frames and player.frame < len(frames):
                 current_frame = frames[player.frame]
             else:
-                return  # Анімація смерті завершена
+                return
         else:
             if player.is_hurt:
                 frames = player.animation_manager.get_animation("hurt")
@@ -34,7 +34,6 @@ class PlayerRenderer:
         if player.is_hurt and player.frame % 2 == 0:
             current_frame = self.apply_hurt_effect(current_frame)
         
-        # Додаємо ефект напівпрозорості для мертвих гравців
         if not player.is_alive:
             current_frame = self.apply_death_effect(current_frame)
         
@@ -43,7 +42,6 @@ class PlayerRenderer:
             player.rect.y + camera_offset[1]
         ))
 
-        # Не малюємо UI для мертвих гравців
         if player.is_alive:
             hp_bar_y = player.rect.y + camera_offset[1] - 40
             name_y = player.rect.y + camera_offset[1] - 80
@@ -66,7 +64,6 @@ class PlayerRenderer:
                 ))
 
     def apply_death_effect(self, surface):
-        """Застосовує напівпрозорість для мертвих гравців"""
         death_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         death_surface.blit(surface, (0, 0))
         death_surface.fill((255, 255, 255, 128), special_flags=pygame.BLEND_RGBA_MULT)

@@ -1,4 +1,3 @@
-# src/player/animations.py
 import pygame
 import os
 
@@ -21,10 +20,8 @@ class AnimationManager:
     
     def load_all_animations(self):
         try:
-            # Використовуємо os.path для кросплатформенних шляхів
             base_path = os.path.join("assets", self.skin)
             
-            # Перевіряємо чи існує шлях
             if not os.path.exists(base_path):
                 raise FileNotFoundError(f"Шлях до скіна не знайдено: {base_path}")
             
@@ -41,10 +38,8 @@ class AnimationManager:
     
     def load_animation(self, filepath, frame_count):
         try:
-            # Нормалізуємо шлях для поточної ОС
             normalized_path = os.path.normpath(filepath)
             
-            # Перевіряємо чи файл існує
             if not os.path.exists(normalized_path):
                 raise FileNotFoundError(f"Файл анімації не знайдено: {normalized_path}")
             
@@ -67,11 +62,11 @@ class AnimationManager:
     
     def create_placeholder_animations(self):
         colors = {
-            "eblan": (255, 0, 0),     # Червоний
-            "holub": (0, 0, 255),     # Синій
-            "suka": (255, 0, 255)     # Фіолетовий
+            "eblan": (255, 0, 0),
+            "holub": (0, 0, 255),
+            "suka": (255, 0, 255)
         }
-        color = colors.get(self.skin, (255, 255, 0))  # Жовтий для невідомих скінів
+        color = colors.get(self.skin, (255, 255, 0))
         
         for state in self.animations:
             self.animations[state]["frames"] = self.create_placeholder_frames(
@@ -83,7 +78,6 @@ class AnimationManager:
         frames = []
         for i in range(frame_count):
             surf = pygame.Surface((64, 64), pygame.SRCALPHA)
-            # Додаємо номер кадру для наглядності
             pygame.draw.rect(surf, color, (0, 0, 64, 64), 1)
             font = pygame.font.SysFont('Arial', 12)
             text = font.render(f"{self.skin[:3]}{i+1}", True, color)

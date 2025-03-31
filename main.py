@@ -11,14 +11,12 @@ from src.card import CardManager
 
 class GameClient:
     def __init__(self, host, port):
-
-        
         self.config = load_config()
         self.skin = self.config.get("skin", "eblan")
         self.player_name = input("Enter your name: ")
         self.network = NetworkManager(host, port)
         
-        if not self.network.connect(self.player_name, self.skin):  # Додаємо скін при підключенні
+        if not self.network.connect(self.player_name, self.skin):
             raise ConnectionError("Failed to connect to server")
         
         self.player = None
@@ -43,7 +41,6 @@ class GameClient:
             self.player.update_from_data(message["player_data"])
 
         elif message["type"] == "explosion":
-            # Оновлення анімації вибуху на клієнті
             self.card_manager.is_exploding = True
             self.card_manager.explosion_pos = (message["x"], message["y"])
             self.card_manager.explosion_radius = 10
@@ -158,14 +155,14 @@ class GameClient:
                     screen_width, screen_height = self.window.get_screen().get_size()
                     player_rect = None
                     if self.player:
-                        player_rect = self.player.rect  # Тепер передаємо весь rect
+                        player_rect = self.player.rect
                     self.card_manager.handle_card_click(
                         event.pos,
                         screen_width,
                         screen_height,
                         getattr(self.player, 'id', None),
                         self.network,
-                        player_rect  # Передаємо rect замість позиції
+                        player_rect
                     )
                     
                 self.window.handle_event(event)

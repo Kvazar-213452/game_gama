@@ -27,13 +27,11 @@ class Player:
         self.is_hurt = False
         self.hurt_timer = 0
         self.hurt_duration = 0.5
-
         self.is_alive = True
         self.death_timer = 0
         self.respawn_time = 5
         self.respawn_position = (x, y)
         self.death_animation_played = False
-
         self.animation_manager = AnimationManager(skin)
         self.renderer = PlayerRenderer()
         self.kills = 0
@@ -91,8 +89,8 @@ class Player:
         self.is_attacking = data.get("is_attacking", False)
         self.is_jumping = data.get("is_jumping", False)
         self.is_hurt = data.get("is_hurt", False)
-        self.skin = data.get("skin", "eblan")  # Оновлюємо скін
-        self.animation_manager.set_skin(self.skin)  # Оновлюємо анімації
+        self.skin = data.get("skin")
+        self.animation_manager.set_skin(self.skin)
     
     def get_data(self):
         return {
@@ -106,7 +104,7 @@ class Player:
             "is_attacking": self.is_attacking,
             "is_jumping": self.is_jumping,
             "is_hurt": self.is_hurt,
-            "skin": self.skin  # Додаємо скін до даних гравця
+            "skin": self.skin
         }
 
     def handle_input(self, keys):
