@@ -10,10 +10,10 @@ class NetworkManager:
         self.buffer = ""
         self.running = True
     
-    def connect(self, player_name):
+    def connect(self, player_name, skin):
         try:
             self.client.connect((self.host, self.port))
-            self.client.send(json.dumps({"name": player_name}).encode('utf-8'))
+            self.client.send(json.dumps({"name": player_name, "skin": skin}).encode('utf-8'))
             return True
         except Exception as e:
             print(f"Connection error: {e}")

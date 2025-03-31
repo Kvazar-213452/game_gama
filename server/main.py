@@ -2,6 +2,8 @@ import socket
 import threading
 import json
 import time
+import math
+import random
 
 class GameServer:
     def __init__(self, host='localhost', port=5555):
@@ -34,9 +36,12 @@ class GameServer:
 
         name_data = client.recv(1024).decode('utf-8').strip()
         try:
-            player_name = json.loads(name_data)["name"]
+            player_data = json.loads(name_data)
+            player_name = player_data["name"]
+            player_skin = player_data.get("skin", "eblan")  # Отримуємо скін
         except:
             player_name = f"Player{addr[1]%1000}"
+            player_skin = "eblan"
         
         player_id = str(addr[1])
         self.players[player_id] = {
@@ -46,7 +51,8 @@ class GameServer:
             "state": "idle",
             "frame": 0,
             "last_update": time.time(),
-            "name": player_name
+            "name": player_name,
+            "skin": player_skin  # Зберігаємо скін
         }
 
         self.leaderboard[player_id] = {
@@ -103,6 +109,115 @@ class GameServer:
                                     "player_id": player_id,
                                     "player_data": self.players[player_id]
                                 })
+                                
+                        elif message["type"] == "use_card":
+                            player_id = message["player_id"]
+                            card = message["card"]
+                            
+                            if player_id in self.players:
+                                if card == "heal":
+                                    self.players[player_id]["hp"] = min(
+                                        self.players[player_id].get("max_hp", 100),
+                                        self.players[player_id]["hp"] + 50
+                                    )
+                                    
+                                    self.broadcast({
+                                        "type": "hp_update",
+                                        "player_id": player_id,
+                                        "hp": self.players[player_id]["hp"]
+                                    })
+                                    
+                                elif card == "boom":
+                                    explosion_x = message["x"]
+                                    explosion_y = message["y"]
+                                    explosion_radius = 150
+                                    damage = 80
+                                    
+                                    # Відправляємо повідомлення про вибух всім клієнтам
+                                    self.broadcast({
+                                        "type": "explosion",
+                                        "x": explosion_x,
+                                        "y": explosion_y
+                                    })
+                                    
+                                    # Знаходимо гравців у радіусі вибуху
+                                    for target_id, target_data in self.players.items():
+                                        if target_id != player_id and target_data.get("is_alive", True):
+                                            dx = target_data["x"] - explosion_x
+                                            dy = target_data["y"] - explosion_y
+                                            distance = math.sqrt(dx*dx + dy*dy)
+                                            
+                                            if distance <= explosion_radius:
+                                                self.players[target_id]["hp"] = max(0, target_data["hp"] - damage)
+                                                
+                                                if self.players[target_id]["hp"] <= 0:
+                                                    self.leaderboard[player_id]["kills"] += 1
+                                                    self.leaderboard[target_id]["deaths"] += 1
+                                                    
+                                                    self.broadcast({
+                                                        "type": "leaderboard_update",
+                                                        "leaderboard": self.get_sorted_leaderboard()
+                                                    })
+                                                    self.players[target_id]["is_alive"] = False
+                                                    self.players[target_id]["death_timer"] = 5
+                                                    self.players[target_id]["state"] = "death"
+
+                                                    self.broadcast({
+                                                        "type": "player_death",
+                                                        "player_id": target_id,
+                                                        "respawn_time": 5
+                                                    })
+                                                    
+                                                    threading.Timer(5, self.respawn_player, [target_id]).start()
+                                                else:
+                                                    self.players[target_id]["is_hurt"] = True
+                                                    self.players[target_id]["state"] = "hurt"
+                                                    
+                                                    self.broadcast({
+                                                        "type": "hp_update",
+                                                        "player_id": target_id,
+                                                        "hp": self.players[target_id]["hp"],
+                                                        "attacker_id": player_id,
+                                                        "is_hurt": True
+                                                    })
+
+                                elif card == "def_random":
+                                    # Вибираємо випадкового гравця (може бути і той, хто активував)
+                                    all_player_ids = list(self.players.keys())
+                                    if all_player_ids:
+                                        target_id = random.choice(all_player_ids)
+                                        
+                                        # Вбиваємо випадкового гравця
+                                        self.players[target_id]["hp"] = 0
+                                        self.players[target_id]["is_alive"] = False
+                                        self.players[target_id]["death_timer"] = 5
+                                        self.players[target_id]["state"] = "death"
+                                        
+                                        # Оновлюємо статистику
+                                        killer_name = self.players[player_id].get("name", "Unknown")
+                                        victim_name = self.players[target_id].get("name", "Unknown")
+                                        
+                                        # Якщо гравець вбив сам себе
+                                        if player_id == target_id:
+                                            self.leaderboard[player_id]["deaths"] += 1
+                                        else:
+                                            self.leaderboard[player_id]["kills"] += 1
+                                            self.leaderboard[target_id]["deaths"] += 1
+                                        
+                                        self.broadcast({
+                                            "type": "leaderboard_update",
+                                            "leaderboard": self.get_sorted_leaderboard()
+                                        })
+                                        
+                                        self.broadcast({
+                                            "type": "player_death",
+                                            "player_id": target_id,
+                                            "respawn_time": 5,
+                                            "clear_cards": True  # Додаємо прапорець для очищення карт
+                                        })
+                                        
+                                        print(f"{killer_name} викорав карту 'def_random' і вбив {victim_name}!")
+                                        threading.Timer(5, self.respawn_player, [target_id]).start()
 
                         elif message["type"] == "attack":
                             attacker_id = player_id
@@ -113,11 +228,9 @@ class GameServer:
                                 self.players[target_id]["hp"] = max(0, self.players[target_id]["hp"] - damage)
                                 
                                 if self.players[target_id]["hp"] <= 0:
-                                    # Оновлюємо статистику
                                     self.leaderboard[attacker_id]["kills"] += 1
                                     self.leaderboard[target_id]["deaths"] += 1
                                     
-                                    # Відправляємо оновлену статистику всім клієнтам
                                     self.broadcast({
                                         "type": "leaderboard_update",
                                         "leaderboard": self.get_sorted_leaderboard()
@@ -125,15 +238,13 @@ class GameServer:
                                     self.players[target_id]["is_alive"] = False
                                     self.players[target_id]["death_timer"] = 5
                                     self.players[target_id]["state"] = "death"
-                                    
-                                    # Відправляємо повідомлення про смерть
+
                                     self.broadcast({
                                         "type": "player_death",
                                         "player_id": target_id,
                                         "respawn_time": 5
                                     })
                                     
-                                    # Запускаємо таймер для відродження
                                     threading.Timer(5, self.respawn_player, [target_id]).start()
                                 else:
                                     self.players[target_id]["is_hurt"] = True
@@ -157,10 +268,9 @@ class GameServer:
             self.remove_client(client, player_id)
             
     def get_sorted_leaderboard(self):
-        """Повертає відсортований топ гравців"""
         return sorted(self.leaderboard.items(), 
                         key=lambda x: x[1]["kills"], 
-                        reverse=True)[:10]  # Топ-10 гравців
+                        reverse=True)[:10]
     
     def remove_client(self, client, player_id=None):
         if client in self.clients:
@@ -188,12 +298,33 @@ class GameServer:
             self.players[player_id]["state"] = "idle"
             self.players[player_id]["frame"] = 0
             
-            # Відправляємо повідомлення про відродження всім клієнтам
             self.broadcast({
                 "type": "player_respawn",
                 "player_id": player_id,
                 "player_data": self.players[player_id]
             })
+
+    def handle_player_death(self, player_id, killer_id):
+        if player_id in self.players:
+            self.players[player_id]["is_alive"] = False
+            self.players[player_id]["death_timer"] = 5
+            self.players[player_id]["state"] = "death"
+            
+            # Оновлюємо статистику
+            if killer_id in self.leaderboard:
+                self.leaderboard[killer_id]["kills"] += 1
+            if player_id in self.leaderboard:
+                self.leaderboard[player_id]["deaths"] += 1
+            
+            self.broadcast({
+                "type": "player_death",
+                "player_id": player_id,
+                "respawn_time": 5,
+                "attacker_id": killer_id,
+                "clear_cards": True  # Додаємо прапорець для очищення карт
+            })
+            
+            threading.Timer(5, self.respawn_player, [player_id]).start()
     
     def start(self):
         while self.running:

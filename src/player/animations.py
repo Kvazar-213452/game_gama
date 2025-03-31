@@ -1,7 +1,10 @@
+# src/player/animations.py
 import pygame
+import os
 
 class AnimationManager:
-    def __init__(self):
+    def __init__(self, skin="eblan"):
+        self.skin = skin
         self.animations = {
             "idle": {"frames": [], "count": 4},
             "walk": {"frames": [], "count": 6},
@@ -12,24 +15,43 @@ class AnimationManager:
         }
         self.load_all_animations()
     
+    def set_skin(self, skin):
+        self.skin = skin
+        self.load_all_animations()
+    
     def load_all_animations(self):
         try:
-            self.animations["idle"]["frames"] = self.load_animation("Idle.png", 4)
-            self.animations["walk"]["frames"] = self.load_animation("Walk.png", 6)
-            self.animations["jump"]["frames"] = self.load_animation("Jump.png", 8)
-            self.animations["attack"]["frames"] = self.load_animation("Attack.png", 6)
-            self.animations["hurt"]["frames"] = self.load_animation("Hurt.png", 4)
-            self.animations["death"]["frames"] = self.load_animation("Death.png", 8)
+            # Використовуємо os.path для кросплатформенних шляхів
+            base_path = os.path.join("assets", self.skin)
+            
+            # Перевіряємо чи існує шлях
+            if not os.path.exists(base_path):
+                raise FileNotFoundError(f"Шлях до скіна не знайдено: {base_path}")
+            
+            self.animations["idle"]["frames"] = self.load_animation(os.path.join(base_path, "Idle.png"), 4)
+            self.animations["walk"]["frames"] = self.load_animation(os.path.join(base_path, "Walk.png"), 6)
+            self.animations["jump"]["frames"] = self.load_animation(os.path.join(base_path, "Jump.png"), 8)
+            self.animations["attack"]["frames"] = self.load_animation(os.path.join(base_path, "Attack.png"), 6)
+            self.animations["hurt"]["frames"] = self.load_animation(os.path.join(base_path, "Hurt.png"), 4)
+            self.animations["death"]["frames"] = self.load_animation(os.path.join(base_path, "Death.png"), 8)
+            
         except Exception as e:
-            print(f"Помилка завантаження анімацій: {e}")
+            print(f"Помилка завантаження анімацій для скіна {self.skin}: {e}")
             self.create_placeholder_animations()
     
-    def load_animation(self, filename, frame_count):
+    def load_animation(self, filepath, frame_count):
         try:
-            sheet = pygame.image.load(f"asets/{filename}").convert_alpha()
+            # Нормалізуємо шлях для поточної ОС
+            normalized_path = os.path.normpath(filepath)
+            
+            # Перевіряємо чи файл існує
+            if not os.path.exists(normalized_path):
+                raise FileNotFoundError(f"Файл анімації не знайдено: {normalized_path}")
+            
+            sheet = pygame.image.load(normalized_path).convert_alpha()
             return self.split_sheet(sheet, frame_count)
-        except:
-            print(f"Не вдалося завантажити анімацію: {filename}")
+        except Exception as e:
+            print(f"Не вдалося завантажити анімацію {filepath}: {e}")
             return self.create_placeholder_frames(frame_count)
     
     def split_sheet(self, sheet, frame_count):
@@ -44,14 +66,28 @@ class AnimationManager:
         return frames
     
     def create_placeholder_animations(self):
+        colors = {
+            "eblan": (255, 0, 0),     # Червоний
+            "holub": (0, 0, 255),     # Синій
+            "suka": (255, 0, 255)     # Фіолетовий
+        }
+        color = colors.get(self.skin, (255, 255, 0))  # Жовтий для невідомих скінів
+        
         for state in self.animations:
-            self.animations[state]["frames"] = self.create_placeholder_frames(self.animations[state]["count"])
+            self.animations[state]["frames"] = self.create_placeholder_frames(
+                self.animations[state]["count"], 
+                color
+            )
     
     def create_placeholder_frames(self, frame_count, color=(255, 0, 0)):
         frames = []
-        for _ in range(frame_count):
+        for i in range(frame_count):
             surf = pygame.Surface((64, 64), pygame.SRCALPHA)
-            pygame.draw.rect(surf, color, (0, 0, 64, 64))
+            # Додаємо номер кадру для наглядності
+            pygame.draw.rect(surf, color, (0, 0, 64, 64), 1)
+            font = pygame.font.SysFont('Arial', 12)
+            text = font.render(f"{self.skin[:3]}{i+1}", True, color)
+            surf.blit(text, (10, 10))
             frames.append(surf)
         return frames
     

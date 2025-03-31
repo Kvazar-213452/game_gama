@@ -3,8 +3,9 @@ from src.player.animations import AnimationManager
 from src.player.renderer import PlayerRenderer
 
 class Player:
-    def __init__(self, player_id, x, y, name="Player"):
+    def __init__(self, player_id, x, y, name="Player", skin="eblan"):
         self.id = player_id
+        self.skin = skin
         self.name = name
         self.rect = pygame.Rect(x, y, 64, 64)
         self.velocity_y = 0
@@ -33,10 +34,10 @@ class Player:
         self.respawn_position = (x, y)
         self.death_animation_played = False
 
-        self.animation_manager = AnimationManager()
+        self.animation_manager = AnimationManager(skin)
         self.renderer = PlayerRenderer()
-        self.kills = 0  # Лічильник вбивств
-        self.deaths = 0  # Лічильник смертей
+        self.kills = 0
+        self.deaths = 0
 
     def add_kill(self):
         self.kills += 1
@@ -90,7 +91,9 @@ class Player:
         self.is_attacking = data.get("is_attacking", False)
         self.is_jumping = data.get("is_jumping", False)
         self.is_hurt = data.get("is_hurt", False)
-
+        self.skin = data.get("skin", "eblan")  # Оновлюємо скін
+        self.animation_manager.set_skin(self.skin)  # Оновлюємо анімації
+    
     def get_data(self):
         return {
             "x": self.rect.x,
@@ -102,7 +105,8 @@ class Player:
             "hp": self.hp,
             "is_attacking": self.is_attacking,
             "is_jumping": self.is_jumping,
-            "is_hurt": self.is_hurt
+            "is_hurt": self.is_hurt,
+            "skin": self.skin  # Додаємо скін до даних гравця
         }
 
     def handle_input(self, keys):
@@ -133,44 +137,66 @@ class Player:
                 self.death_timer -= dt
                 if self.death_timer <= 0:
                     self.respawn()
+            return
 
         if self.is_hurt:
             self.hurt_timer -= dt
             if self.hurt_timer <= 0:
                 self.is_hurt = False
-                self.state = "idle"
+                if self.velocity_x != 0:
+                    self.state = "walk"
+                else:
+                    self.state = "idle"
 
-        if self.attack_cooldown > 0:
-            self.attack_cooldown -= 1
-        
         current_time = pygame.time.get_ticks() / 1000
         if current_time - self.last_update > self.animation_speed:
             self.last_update = current_time
+            
             if self.is_hurt:
                 frames = self.animation_manager.get_animation("hurt")
             else:
                 frames = self.animation_manager.get_animation(self.state)
-                
+            
             if frames:
-                self.frame = (self.frame + 1) % len(frames)
-                if self.state == "attack" and self.frame == 0:
+                if not (self.is_attacking and self.frame == len(frames) - 1):
+                    self.frame = (self.frame + 1) % len(frames)
+                
+                if self.state == "attack" and self.frame == len(frames) - 1:
                     self.is_attacking = False
-                    self.state = "idle"
-        
-        if not self.is_attacking and not self.is_hurt:
+                    if self.velocity_x != 0:
+                        self.state = "walk"
+                    else:
+                        self.state = "idle"
+                    self.frame = 0
+
+        if not self.is_attacking:
             self.velocity_y += self.gravity
             self.rect.x += self.velocity_x
             self.rect.y += self.velocity_y
         
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
+        
         self.is_jumping = True
         for platform in platforms:
-            if self.rect.colliderect(platform) and self.velocity_y > 0 and self.rect.bottom < platform.bottom:
-                self.rect.bottom = platform.top
-                self.velocity_y = 0
-                self.is_jumping = False
-                if self.state == "jump":
-                    self.state = "idle"
-                    self.frame = 0
+            collision_rect = pygame.Rect(
+                self.rect.x,
+                self.rect.bottom - self.rect.height // 3,
+                self.rect.width,
+                self.rect.height // 3
+            )
+            
+            if collision_rect.colliderect(platform):
+                if self.velocity_y > 0:
+                    self.rect.bottom = platform.top
+                    self.velocity_y = 0
+                    self.is_jumping = False
+                    if self.state == "jump":
+                        self.state = "idle" if self.velocity_x == 0 else "walk"
+                        self.frame = 0
+                elif self.velocity_y < 0:
+                    self.rect.top = platform.bottom
+                    self.velocity_y = 0
 
     def take_damage(self, amount):
         self.hp = max(0, self.hp - amount)
