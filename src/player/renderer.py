@@ -94,7 +94,12 @@ class PlayerRenderer:
         
         if player.is_attacking:
             attack_text = self.ui_font.render("ATTACKING!", True, (255, 0, 0))
-            screen.blit(attack_text, (15, 45))
+            screen.blit(attack_text, (15, 75))
+
+        if hasattr(player, 'special_message') and player.special_message:
+            font = pygame.font.SysFont('Arial', 24, bold=True)
+            text = font.render(f"Дії: {player.special_message}", True, (255, 255, 0))
+            screen.blit(text, (15, 105))
 
     def apply_hurt_effect(self, surface):
         hurt_surface = surface.copy()

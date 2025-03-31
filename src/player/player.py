@@ -35,6 +35,14 @@ class Player:
 
         self.animation_manager = AnimationManager()
         self.renderer = PlayerRenderer()
+        self.kills = 0  # Лічильник вбивств
+        self.deaths = 0  # Лічильник смертей
+
+    def add_kill(self):
+        self.kills += 1
+
+    def add_death(self):
+        self.deaths += 1
 
     def jump(self):
         if not self.is_jumping:

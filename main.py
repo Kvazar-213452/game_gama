@@ -20,8 +20,11 @@ class GameClient:
         screen_width, screen_height = self.window.get_size()
         
         self.camera = Camera(screen_width, screen_height)
-        
+        self.leaderboard = []
         self.network.start_receive_thread(self.handle_message)
+
+        self.leaderboard_surface = None  # Поверхня для кешування топу
+        self.leaderboard_dirty = True  # Прапорець для перемальовування
 
     def handle_message(self, message):
         if message["type"] == "init":
@@ -44,6 +47,10 @@ class GameClient:
         elif message["type"] == "player_update":
             if message["player_id"] in self.other_players:
                 self.other_players[message["player_id"]].update_from_data(message["player_data"])
+                
+        elif message["type"] == "leaderboard_update":
+            self.leaderboard = message["leaderboard"]
+            self.leaderboard_dirty = True
         
         elif message["type"] == "hp_update":
             if message["player_id"] == getattr(self.player, 'id', None):
@@ -123,6 +130,10 @@ class GameClient:
         
         while self.running:
             dt = self.window.get_clock().tick(60) / 1000.0
+
+            self.update_leaderboard_surface()
+            
+
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -166,11 +177,41 @@ class GameClient:
             if self.player and (self.player.is_alive or self.player.state == "death"):
                 self.player.draw(screen, self.camera.get_offset())
                 self.player.draw_ui(screen)
+
+            self.draw_leaderboard(self.window.get_screen())
             
             self.window.update_display()
 
         self.network.close_connection()
         self.window.quit()
+
+    def update_leaderboard_surface(self):
+        """Оновлює поверхню з топом гравців"""
+        if not self.leaderboard_dirty:
+            return
+            
+        leaderboard_font = pygame.font.SysFont('Arial', 20, bold=True)
+        surface = pygame.Surface((200, 180), pygame.SRCALPHA)
+        
+        title = leaderboard_font.render("Топ гравців:", True, (255, 255, 255))
+        surface.blit(title, (0, 0))
+        
+        for i, (player_id, stats) in enumerate(self.leaderboard[:5]):
+            entry = leaderboard_font.render(
+                f"{i+1}. {stats['name']}: {stats['kills']}", 
+                True, 
+                (255, 215, 0) if i == 0 else (255, 255, 255)
+            )
+            surface.blit(entry, (0, 30 + i * 30))
+        
+        self.leaderboard_surface = surface
+        self.leaderboard_dirty = False
+
+    def draw_leaderboard(self, screen):
+        """Малює кешовану поверхню з топом"""
+        if self.leaderboard_surface:
+            screen.blit(self.leaderboard_surface, 
+                       (screen.get_width() - self.leaderboard_surface.get_width() - 20, 20))
 
 if __name__ == "__main__":
     try:

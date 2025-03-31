@@ -13,6 +13,8 @@ class GameServer:
         self.clients = []
         self.players = {}
         self.running = True
+
+        self.leaderboard = {}
         
         print(f"Server started on {host}:{port}")
     
@@ -29,7 +31,7 @@ class GameServer:
     
     def handle_client(self, client, addr):
         print(f"New connection from {addr}")
-        
+
         name_data = client.recv(1024).decode('utf-8').strip()
         try:
             player_name = json.loads(name_data)["name"]
@@ -46,6 +48,13 @@ class GameServer:
             "last_update": time.time(),
             "name": player_name
         }
+
+        self.leaderboard[player_id] = {
+            "name": player_name,
+            "kills": 0,
+            "deaths": 0
+        }
+        
         
         initial_data = {
             "type": "init",
@@ -104,6 +113,15 @@ class GameServer:
                                 self.players[target_id]["hp"] = max(0, self.players[target_id]["hp"] - damage)
                                 
                                 if self.players[target_id]["hp"] <= 0:
+                                    # Оновлюємо статистику
+                                    self.leaderboard[attacker_id]["kills"] += 1
+                                    self.leaderboard[target_id]["deaths"] += 1
+                                    
+                                    # Відправляємо оновлену статистику всім клієнтам
+                                    self.broadcast({
+                                        "type": "leaderboard_update",
+                                        "leaderboard": self.get_sorted_leaderboard()
+                                    })
                                     self.players[target_id]["is_alive"] = False
                                     self.players[target_id]["death_timer"] = 5
                                     self.players[target_id]["state"] = "death"
@@ -137,6 +155,12 @@ class GameServer:
             print(f"Client error: {e}")
         finally:
             self.remove_client(client, player_id)
+            
+    def get_sorted_leaderboard(self):
+        """Повертає відсортований топ гравців"""
+        return sorted(self.leaderboard.items(), 
+                        key=lambda x: x[1]["kills"], 
+                        reverse=True)[:10]  # Топ-10 гравців
     
     def remove_client(self, client, player_id=None):
         if client in self.clients:
