@@ -10,8 +10,10 @@ class AnimationManager:
             "jump": {"frames": [], "count": 8},
             "attack": {"frames": [], "count": 6},
             "hurt": {"frames": [], "count": 4},
-            "death": {"frames": [], "count": 8}
+            "death": {"frames": [], "count": 8},
+            "jerk": {"frames": [], "count": 4}
         }
+        
         self.load_all_animations()
     
     def set_skin(self, skin):
@@ -25,12 +27,28 @@ class AnimationManager:
             if not os.path.exists(base_path):
                 raise FileNotFoundError(f"Шлях до скіна не знайдено: {base_path}")
             
-            self.animations["idle"]["frames"] = self.load_animation(os.path.join(base_path, "Idle.png"), 4)
-            self.animations["walk"]["frames"] = self.load_animation(os.path.join(base_path, "Walk.png"), 6)
-            self.animations["jump"]["frames"] = self.load_animation(os.path.join(base_path, "Jump.png"), 8)
-            self.animations["attack"]["frames"] = self.load_animation(os.path.join(base_path, "Attack.png"), 6)
-            self.animations["hurt"]["frames"] = self.load_animation(os.path.join(base_path, "Hurt.png"), 4)
-            self.animations["death"]["frames"] = self.load_animation(os.path.join(base_path, "Death.png"), 8)
+            animations_to_load = {
+                "idle": "Idle.png",
+                "walk": "Run.png",
+                "jump": "Jump.png",
+                "attack": "Attack.png",
+                "hurt": "Hurt.png",
+                "death": "Death.png",
+                "jerk": "Squat.png"
+            }
+            
+            for state, filename in animations_to_load.items():
+                filepath = os.path.join(base_path, filename)
+                if os.path.exists(filepath):
+                    self.animations[state]["frames"] = self.load_animation(
+                        filepath, 
+                        self.animations[state]["count"]
+                    )
+                else:
+                    print(f"Попередження: файл {filename} не знайдено для скіна {self.skin}")
+                    self.animations[state]["frames"] = self.create_placeholder_frames(
+                        self.animations[state]["count"]
+                    )
             
         except Exception as e:
             print(f"Помилка завантаження анімацій для скіна {self.skin}: {e}")
@@ -38,12 +56,7 @@ class AnimationManager:
     
     def load_animation(self, filepath, frame_count):
         try:
-            normalized_path = os.path.normpath(filepath)
-            
-            if not os.path.exists(normalized_path):
-                raise FileNotFoundError(f"Файл анімації не знайдено: {normalized_path}")
-            
-            sheet = pygame.image.load(normalized_path).convert_alpha()
+            sheet = pygame.image.load(filepath).convert_alpha()
             return self.split_sheet(sheet, frame_count)
         except Exception as e:
             print(f"Не вдалося завантажити анімацію {filepath}: {e}")
@@ -61,17 +74,9 @@ class AnimationManager:
         return frames
     
     def create_placeholder_animations(self):
-        colors = {
-            "eblan": (255, 0, 0),
-            "holub": (0, 0, 255),
-            "suka": (255, 0, 255)
-        }
-        color = colors.get(self.skin, (255, 255, 0))
-        
         for state in self.animations:
             self.animations[state]["frames"] = self.create_placeholder_frames(
-                self.animations[state]["count"], 
-                color
+                self.animations[state]["count"]
             )
     
     def create_placeholder_frames(self, frame_count, color=(255, 0, 0)):
