@@ -1,6 +1,4 @@
 import pygame
-import random
-import time
 from src.player.player import Player
 from src.camera import Camera
 from src.network_manager import NetworkManager
@@ -8,6 +6,8 @@ from src.window_manager import WindowManager
 from src.leaderboard import LeaderboardRenderer
 from src.unix import load_config
 from src.card import CardManager
+from src.ui_renderer import UIRenderer
+from src.menu import Menu
 
 class GameClient:
     def __init__(self, host, port):
@@ -31,6 +31,10 @@ class GameClient:
         self.network.start_receive_thread(self.handle_message)
         
         self.card_manager = CardManager()
+        self.ui_renderer = UIRenderer()
+        self.menu = Menu(screen_width, screen_height)
+
+        
 
     def handle_message(self, message):
         if message["type"] == "init":
@@ -141,70 +145,108 @@ class GameClient:
         
         while self.running:
             dt = self.window.get_clock().tick(60) / 1000.0
+            
+            self.update_game_states(dt)
+            self.handle_events()
+            self.update_positions(platforms, dt)
+            self.render_game(platforms)
 
-            self.card_manager.update_cards()
-            self.leaderboard.update_surface()
-            
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE and self.player and not self.player.is_jumping and self.player.is_alive:
-                        self.player.jump()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    screen_width, screen_height = self.window.get_screen().get_size()
-                    player_rect = None
-                    if self.player:
-                        player_rect = self.player.rect
-                    self.card_manager.handle_card_click(
-                        event.pos,
-                        screen_width,
-                        screen_height,
-                        getattr(self.player, 'id', None),
-                        self.network,
-                        player_rect
-                    )
-                    
-                self.window.handle_event(event)
-            
-            current_width, current_height = self.window.get_size()
-            self.camera.update_screen_size(current_width, current_height)
-            
-            keys = pygame.key.get_pressed()
-            
-            if self.player:
-                if self.player.is_alive:
-                    self.player.handle_input(keys)
-                    self.player.update(platforms, dt)
-                    
-                    if self.player.is_attacking and self.player.frame == 3:
-                        self.check_attack()
-                    
-                    self.camera.update(self.player.rect)
-                    self.send_update()
-                else:
-                    self.player.update(platforms, dt)
-            
-            screen = self.window.get_screen()
-            screen.fill((30, 30, 30))
-            
-            for platform in platforms:
-                adjusted_rect = self.camera.apply(platform)
-                pygame.draw.rect(screen, (100, 100, 100), adjusted_rect)
-            
-            for player_id, player in list(self.other_players.items()):
-                if player.is_alive or player.state == "death":
-                    player.draw(screen, self.camera.get_offset())
-            
-            if self.player and (self.player.is_alive or self.player.state == "death"):
-                self.player.draw(screen, self.camera.get_offset())
-                self.player.draw_ui(screen)
+        self.cleanup()
 
-            self.leaderboard.draw(self.window.get_screen())
-            self.card_manager.draw_cards_and_timer(screen)
+    def update_game_states(self, dt):
+        self.card_manager.update_cards()
+        self.leaderboard.update_surface()
 
-            self.window.update_display()
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            elif event.type == pygame.VIDEORESIZE:
+                self.menu.update_layout(event.w, event.h)
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.menu.toggle()
+                self.handle_keydown(event)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if not self.menu.handle_event(event):
+                    self.handle_mouse_click(event)
+            
+            self.window.handle_event(event)
 
+    def handle_keydown(self, event):
+        if (event.key == pygame.K_SPACE and self.player 
+                and not self.player.is_jumping 
+                and self.player.is_alive):
+            self.player.jump()
+
+    def handle_mouse_click(self, event):
+        screen_width, screen_height = self.window.get_screen().get_size()
+        player_rect = self.player.rect if self.player else None
+        self.card_manager.handle_card_click(
+            event.pos,
+            screen_width,
+            screen_height,
+            getattr(self.player, 'id', None),
+            self.network,
+            player_rect
+        )
+
+    def update_positions(self, platforms, dt):
+        current_width, current_height = self.window.get_size()
+        self.camera.update_screen_size(current_width, current_height)
+        
+        keys = pygame.key.get_pressed()
+        
+        if self.player:
+            if self.player.is_alive:
+                self.player.handle_input(keys)
+                self.player.update(platforms, dt)
+                
+                if self.player.is_attacking and self.player.frame == 3:
+                    self.check_attack()
+                
+                self.camera.update(self.player.rect)
+                self.send_update()
+            else:
+                self.player.update(platforms, dt)
+
+    def render_game(self, platforms):
+        screen = self.window.get_screen()
+        
+        screen.fill((30, 30, 30))
+        
+        for platform in platforms:
+            adjusted_rect = self.camera.apply(platform)
+            pygame.draw.rect(screen, (100, 100, 100), adjusted_rect)
+        
+        for player in self.other_players.values():
+            if player.is_alive or player.state == "death":
+                player.draw(screen, self.camera.get_offset())
+
+        if self.player and (self.player.is_alive or self.player.state == "death"):
+            self.player.draw(screen, self.camera.get_offset())
+            self.player.draw_ui(screen)
+
+        if self.player and (self.player.is_alive or self.player.state == "death"):
+            self.player.draw(screen, self.camera.get_offset())
+            self.player.renderer.draw_player_ui(self.player, screen, self.card_manager)
+        
+        self.draw_ui_elements(screen)
+        self.menu.draw(screen)
+
+        self.window.update_display()
+
+    def draw_ui_elements(self, screen):
+        self.leaderboard.draw(screen)
+        self.card_manager.draw_cards_and_timer(screen)
+        all_players = {**self.other_players}
+        if self.player:
+            all_players[self.player.id] = self.player
+        self.ui_renderer.draw_player_list(screen, all_players, getattr(self.player, 'id', None))
+
+        self.ui_renderer.draw_fps(screen, self.window.get_clock())
+
+    def cleanup(self):
         self.network.close_connection()
         self.window.quit()
 

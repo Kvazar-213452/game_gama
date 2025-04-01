@@ -45,10 +45,6 @@ class CardManager:
         return max(0, self.card_interval - elapsed)
 
     def draw_cards_and_timer(self, screen):
-        remaining_time = int(self.get_remaining_time())
-        timer_text = self.timer_font.render(f"Нова карта через: {remaining_time}s", True, (255, 255, 255))
-        screen.blit(timer_text, (20, 50))
-
         button_width = 150
         button_height = 40
         margin = 10

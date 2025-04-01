@@ -1,6 +1,7 @@
 import pygame
 from src.player.animations import AnimationManager
 from src.player.renderer import PlayerRenderer
+import time
 
 class Player:
     def __init__(self, player_id, x, y, name="Player", skin="eblan"):
@@ -22,8 +23,9 @@ class Player:
         self.hp = 100
         self.max_hp = 100
         self.is_attacking = False
-        self.attack_frame = 0
         self.attack_cooldown = 0
+        self.last_attack_time = 0
+        self.attack_delay = 4  # 4 секунди затримки між атаками
         self.is_hurt = False
         self.hurt_timer = 0
         self.hurt_duration = 0.5
@@ -36,6 +38,48 @@ class Player:
         self.renderer = PlayerRenderer()
         self.kills = 0
         self.deaths = 0
+        self.last_hit_time = 0
+        self.hit_cooldown = 4
+        self.attack_in_air = False  # Дозволяє атакувати в повітрі
+
+    def draw_attack_cooldown(self, screen):
+        current_time = time.time()
+        cooldown_remaining = max(0, self.attack_delay - (current_time - self.last_attack_time))
+        
+        if cooldown_remaining > 0:
+            cooldown_text = self.renderer.ui_font.render(
+                f"Атака через: {cooldown_remaining:.1f}s", 
+                True, 
+                (255, 255, 255)
+            )
+            screen.blit(cooldown_text, (15, 45))
+
+    def respawn(self):
+        self.is_alive = True
+        self.hp = self.max_hp
+        self.rect.x, self.rect.y = self.respawn_position
+        self.state = "idle"
+        self.frame = 0
+        self.death_animation_played = False
+        self.is_attacking = False
+        self.attack_cooldown = 0
+        self.is_hurt = False
+        self.hurt_timer = 0
+        self.last_hit_time = 0
+        self.last_attack_time = 0
+        self.attack_in_air = False
+
+    def die(self):
+        self.is_alive = False
+        self.death_timer = self.respawn_time
+        self.state = "death"
+        self.frame = 0
+        self.death_animation_played = False
+        self.is_attacking = False
+        self.attack_cooldown = 0
+        self.is_hurt = False
+        self.hurt_timer = 0
+        self.attack_in_air = False
 
     def add_kill(self):
         self.kills += 1
@@ -51,9 +95,12 @@ class Player:
             self.frame = 0
 
     def take_damage(self, amount):
-        if not self.is_alive:
+        current_time = time.time()
+        # Перевіряємо чи минуло достатньо часу з моменту останнього удару
+        if current_time - self.last_hit_time < self.hit_cooldown:
             return False
             
+        self.last_hit_time = current_time
         self.hp = max(0, self.hp - amount)
         self.is_hurt = True
         self.hurt_timer = self.hurt_duration
@@ -62,21 +109,6 @@ class Player:
             self.die()
             return True
         return False
-
-    def die(self):
-        self.is_alive = False
-        self.death_timer = self.respawn_time
-        self.state = "death"
-        self.frame = 0
-        self.death_animation_played = False
-
-    def respawn(self):
-        self.is_alive = True
-        self.hp = self.max_hp
-        self.rect.x, self.rect.y = self.respawn_position
-        self.state = "idle"
-        self.frame = 0
-        self.death_animation_played = False
 
     def update_from_data(self, data):
         self.rect.x = data["x"]
@@ -123,11 +155,17 @@ class Player:
         elif not self.is_jumping and not self.is_attacking:
             self.state = "idle"
         
-        if keys[pygame.K_m] and not self.is_attacking and self.attack_cooldown <= 0:
+        # Перевіряємо затримку перед атакою
+        current_time = time.time()
+        if (keys[pygame.K_m] and not self.is_attacking 
+                and self.attack_cooldown <= 0 
+                and current_time - self.last_attack_time >= self.attack_delay
+                and not self.is_jumping):  # Додано перевірку на стрибок
             self.is_attacking = True
             self.state = "attack"
             self.frame = 0
             self.attack_cooldown = 30
+            self.last_attack_time = current_time
 
     def update(self, platforms, dt):
         if not self.is_alive:
@@ -161,13 +199,15 @@ class Player:
                 
                 if self.state == "attack" and self.frame == len(frames) - 1:
                     self.is_attacking = False
+                    self.attack_in_air = False  # Скидаємо атаку в повітрі
                     if self.velocity_x != 0:
                         self.state = "walk"
                     else:
                         self.state = "idle"
                     self.frame = 0
 
-        if not self.is_attacking:
+        # Рух гравця (дозволяємо рух під час атаки в повітрі)
+        if not self.is_attacking or self.attack_in_air:
             self.velocity_y += self.gravity
             self.rect.x += self.velocity_x
             self.rect.y += self.velocity_y

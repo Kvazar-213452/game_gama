@@ -1,11 +1,13 @@
 import pygame
+import time
 
 class PlayerRenderer:
     def __init__(self):
+        self.ui_font = pygame.font.SysFont('Arial', 24, bold=True)
         self.name_font = pygame.font.SysFont('Arial', 16, bold=True)
         self.hp_font = pygame.font.SysFont('Arial', 14)
         self.state_font = pygame.font.SysFont('Arial', 14, bold=True)
-        self.ui_font = pygame.font.SysFont('Arial', 24, bold=True)
+        self.card_timer_font = pygame.font.SysFont('Arial', 18)
 
     def draw_player(self, player, screen, camera_offset=(0, 0)):
         if not player.is_alive and player.state != "death":
@@ -84,20 +86,32 @@ class PlayerRenderer:
         hp_text = self.hp_font.render(f"{player.hp}/{player.max_hp}", True, (255, 255, 255))
         screen.blit(hp_text, (x - hp_text.get_width()//2, y - 15))
 
-    def draw_player_ui(self, player, screen):
-        hp_text = self.ui_font.render(f"HP: {player.hp}/{player.max_hp}", True, 
-                                    (255, 50, 50) if player.hp < player.max_hp * 0.3 else (50, 255, 50))
+    def draw_player_ui(self, player, screen, card_manager=None):
+        hp_text = self.ui_font.render(
+            f"HP: {player.hp}/{player.max_hp}", 
+            True, 
+            (255, 50, 50) if player.hp < player.max_hp * 0.3 else (50, 255, 50)
+        )
         screen.blit(hp_text, (15, 15))
         
-        if player.is_attacking:
-            attack_text = self.ui_font.render("ATTACKING!", True, (255, 0, 0))
-            screen.blit(attack_text, (15, 75))
+        current_time = time.time()
+        attack_cooldown = max(0, player.attack_delay - (current_time - player.last_attack_time))
+        if attack_cooldown > 0:
+            cooldown_text = self.ui_font.render(
+                f"Атака: {attack_cooldown:.1f}s", 
+                True, 
+                (200, 200, 200)
+            )
+            screen.blit(cooldown_text, (15, 45))
 
-        if hasattr(player, 'special_message') and player.special_message:
-            font = pygame.font.SysFont('Arial', 24, bold=True)
-            text = font.render(f"Дії: {player.special_message}", True, (255, 255, 0))
-            screen.blit(text, (15, 105))
-
+        if card_manager:
+            card_time = max(0, card_manager.get_remaining_time())
+            card_text = self.card_timer_font.render(
+                f"Карта через: {int(card_time)}s", 
+                True, 
+                (200, 200, 255)
+            )
+            screen.blit(card_text, (15, 80))
     def apply_hurt_effect(self, surface):
         hurt_surface = surface.copy()
         red_mask = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
