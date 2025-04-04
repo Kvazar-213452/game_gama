@@ -6,7 +6,7 @@ import math
 import random
 
 class GameServer:
-    def __init__(self, host='localhost', port=5555):
+    def __init__(self, host='26.102.24.118', port=5555):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind((host, port))
