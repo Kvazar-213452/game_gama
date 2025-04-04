@@ -13,7 +13,8 @@ class GameClient:
     def __init__(self, host, port):
         self.config = load_config()
         self.skin = self.config.get("skin", "eblan")
-        self.player_name = input("Enter your name: ")
+        self.player_name = "test1"
+        #input("Enter your name: ")
         self.network = NetworkManager(host, port)
         
         if not self.network.connect(self.player_name, self.skin):
@@ -33,8 +34,6 @@ class GameClient:
         self.card_manager = CardManager()
         self.ui_renderer = UIRenderer()
         self.menu = Menu(screen_width, screen_height)
-
-        
 
     def handle_message(self, message):
         if message["type"] == "init":
@@ -140,7 +139,9 @@ class GameClient:
             pygame.Rect(0, 500, 300, 20),
             pygame.Rect(400, 400, 200, 20),
             pygame.Rect(200, 200, 150, 20),
-            pygame.Rect(300, 300, 150, 20)
+            pygame.Rect(300, 300, 150, 20),
+            pygame.Rect(-400, 400, 200, 20),
+            pygame.Rect(-300, 300, 200, 20)
         ]
         
         while self.running:

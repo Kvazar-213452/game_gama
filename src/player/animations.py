@@ -31,7 +31,7 @@ class AnimationManager:
                 "idle": "Idle.png",
                 "walk": "Run.png",
                 "jump": "Jump.png",
-                "attack": "Attack.png",
+                "attack": "Attack2.png",
                 "hurt": "Hurt.png",
                 "death": "Death.png",
                 "jerk": "Squat.png"

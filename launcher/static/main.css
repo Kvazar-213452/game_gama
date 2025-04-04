@@ -3,9 +3,9 @@
     height: 630px;
     width: 900px;
     background:
-  linear-gradient(217deg, rgba(255, 0, 0, 0.8), rgba(255, 0, 0, 0) 70.71%),
-  linear-gradient(127deg, rgba(0, 255, 0, 0.8), rgba(0, 255, 0, 0) 70.71%),
-  linear-gradient(336deg, rgba(0, 0, 255, 0.8), rgba(0, 0, 255, 0) 70.71%);
+  linear-gradient(217deg, rgba(53, 53, 53, 0.8), rgba(255, 0, 0, 0) 70.71%),
+  linear-gradient(127deg, rgba(48, 49, 48, 0.8), rgba(0, 255, 0, 0) 70.71%),
+  linear-gradient(336deg, rgba(48, 48, 50, 0.8), rgba(0, 0, 255, 0) 70.71%);
 }
 
 * {
@@ -13,9 +13,33 @@
     padding: 0;
 }
 
+.button,
+.button1,
+.button2 {
+    position: absolute;
+    right: 100px;
+    top: 200px;
+    border: none;
+    border-radius: 5px;
+    color: #f0f2f4;
+    background-color: #3598fc;
+    padding: 10px;
+    cursor: pointer;
+}
+
+.button1 {
+    top: 270px;
+}
+
+.button2 {top: 340px;}
+
+.button:hover {
+    opacity: 0.5;
+}
+
 .palyer {
-    position: relative;
+    position: absolute;
     left: 100px;
-    top: 400px;
-    height: 300px;
+    top: 100px;
+    height: 250px;
 }
