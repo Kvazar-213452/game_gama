@@ -35,77 +35,6 @@ class GameClient:
         self.ui_renderer = UIRenderer()
         self.menu = Menu(screen_width, screen_height)
 
-        try:
-            self.background = pygame.image.load("assets/text_model/2 Background/Background.png").convert()
-        except:
-            print("Не удалось загрузить фоновое изображение")
-            self.background = None
-
-        self.load_platform_tiles()
-        
-        # Генеруємо платформи
-        self.platforms = self.generate_platforms()
-
-    def generate_platforms(self):
-        """Генерує платформи з блоків"""
-        platforms_data = [
-            {"x": 0, "y": 500, "width_blocks": 10},
-            {"x": 400, "y": 400, "width_blocks": 6},
-            {"x": 200, "y": 200, "width_blocks": 5},
-            {"x": 300, "y": 300, "width_blocks": 5},
-            {"x": -400, "y": 400, "width_blocks": 6},
-            {"x": -300, "y": 300, "width_blocks": 6}
-        ]
-        
-        platforms = []
-        
-        for platform in platforms_data:
-            x = platform["x"]
-            y = platform["y"]
-            width_blocks = platform["width_blocks"]
-            
-            # Створюємо платформу з блоків
-            platform_rects = []
-            for i in range(width_blocks):
-                block_x = x + i * self.tile_width
-                block_rect = pygame.Rect(block_x, y, self.tile_width, self.tile_height)
-                platform_rects.append(block_rect)
-            
-            platforms.append({
-                "base_rect": pygame.Rect(x, y, width_blocks * self.tile_width, self.tile_height),
-                "blocks": platform_rects
-            })
-        
-        return platforms
-
-    def load_platform_tiles(self):
-        """Завантажуємо текстури для платформ з відзеркаленими версіями для низу"""
-        try:
-            # Завантажуємо основні текстури
-            self.tile_left = pygame.image.load("assets/text_model/1 Tiles/Tile_01.png").convert_alpha()
-            self.tile_center = pygame.image.load("assets/text_model/1 Tiles/Tile_02.png").convert_alpha()
-            self.tile_right = pygame.image.load("assets/text_model/1 Tiles/Tile_03.png").convert_alpha()
-            
-            # Створюємо відзеркалені версії для нижньої частини
-            self.tile_left_bottom = pygame.transform.flip(self.tile_left, False, True)
-            self.tile_center_bottom = pygame.transform.flip(self.tile_center, False, True)
-            self.tile_right_bottom = pygame.transform.flip(self.tile_right, False, True)
-            
-            # Отримуємо розміри блоку (припускаємо, що всі блоки однакового розміру)
-            self.tile_width = self.tile_center.get_width()
-            self.tile_height = self.tile_center.get_height()
-        except Exception as e:
-            print(f"Помилка завантаження текстур платформ: {e}")
-            # Створюємо прості прямокутники як запасний варіант
-            self.tile_left = None
-            self.tile_center = None
-            self.tile_right = None
-            self.tile_left_bottom = None
-            self.tile_center_bottom = None
-            self.tile_right_bottom = None
-            self.tile_width = 32
-            self.tile_height = 32
-
     def handle_message(self, message):
         if message["type"] == "init":
             self.player = Player(message["player_id"], 
@@ -286,41 +215,10 @@ class GameClient:
         screen = self.window.get_screen()
         
         screen.fill((30, 30, 30))
-
-        if self.background:
-            # Масштабируем фон под размер экрана
-            screen_width, screen_height = self.window.get_size()
-            scaled_bg = pygame.transform.scale(self.background, (screen_width, screen_height))
-            screen.blit(scaled_bg, (0, 0))
-        else:
-            # Если фон не загружен, используем простую заливку
-            screen.fill((30, 30, 30))
         
-        for platform in self.platforms:
-            for i, block_rect in enumerate(platform["blocks"]):
-                adjusted_rect = self.camera.apply(block_rect)
-                
-                # Визначаємо який блок малювати (лівий, центральний, правий)
-                if len(platform["blocks"]) == 1:
-                    # Якщо платформа з одного блоку - малюємо центральний
-                    tile = self.tile_center
-                elif i == 0:
-                    # Перший блок - лівий
-                    tile = self.tile_left
-                elif i == len(platform["blocks"]) - 1:
-                    # Останній блок - правий
-                    tile = self.tile_right
-                else:
-                    # Центральні блоки
-                    tile = self.tile_center
-                
-                if tile:
-                    # Якщо текстури завантажені - малюємо їх
-                    scaled_tile = pygame.transform.scale(tile, (adjusted_rect.width, adjusted_rect.height))
-                    screen.blit(scaled_tile, adjusted_rect)
-                else:
-                    # Якщо текстури не завантажені - малюємо прості прямокутники
-                    pygame.draw.rect(screen, (100, 100, 100), adjusted_rect)
+        for platform in platforms:
+            adjusted_rect = self.camera.apply(platform)
+            pygame.draw.rect(screen, (100, 100, 100), adjusted_rect)
         
         for player in self.other_players.values():
             if player.is_alive or player.state == "death":

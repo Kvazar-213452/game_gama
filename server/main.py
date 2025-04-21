@@ -6,7 +6,7 @@ import math
 import random
 
 class GameServer:
-    def __init__(self, host='26.102.24.118', port=5555):
+    def __init__(self, host='26.168.243.99', port=5555):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind((host, port))
@@ -126,58 +126,6 @@ class GameServer:
                                         "player_id": player_id,
                                         "hp": self.players[player_id]["hp"]
                                     })
-                                    
-                                elif card == "boom":
-                                    explosion_x = message["x"]
-                                    explosion_y = message["y"]
-                                    explosion_radius = 150
-                                    damage = 80
-                                    
-                                    self.broadcast({
-                                        "type": "explosion",
-                                        "x": explosion_x,
-                                        "y": explosion_y
-                                    })
-                                    
-                                    for target_id, target_data in self.players.items():
-                                        if target_id != player_id and target_data.get("is_alive", True):
-                                            dx = target_data["x"] - explosion_x
-                                            dy = target_data["y"] - explosion_y
-                                            distance = math.sqrt(dx*dx + dy*dy)
-                                            
-                                            if distance <= explosion_radius:
-                                                self.players[target_id]["hp"] = max(0, target_data["hp"] - damage)
-                                                
-                                                if self.players[target_id]["hp"] <= 0:
-                                                    self.leaderboard[player_id]["kills"] += 1
-                                                    self.leaderboard[target_id]["deaths"] += 1
-                                                    
-                                                    self.broadcast({
-                                                        "type": "leaderboard_update",
-                                                        "leaderboard": self.get_sorted_leaderboard()
-                                                    })
-                                                    self.players[target_id]["is_alive"] = False
-                                                    self.players[target_id]["death_timer"] = 5
-                                                    self.players[target_id]["state"] = "death"
-
-                                                    self.broadcast({
-                                                        "type": "player_death",
-                                                        "player_id": target_id,
-                                                        "respawn_time": 5
-                                                    })
-                                                    
-                                                    threading.Timer(5, self.respawn_player, [target_id]).start()
-                                                else:
-                                                    self.players[target_id]["is_hurt"] = True
-                                                    self.players[target_id]["state"] = "hurt"
-                                                    
-                                                    self.broadcast({
-                                                        "type": "hp_update",
-                                                        "player_id": target_id,
-                                                        "hp": self.players[target_id]["hp"],
-                                                        "attacker_id": player_id,
-                                                        "is_hurt": True
-                                                    })
 
                                 elif card == "def_random":
                                     all_player_ids = list(self.players.keys())

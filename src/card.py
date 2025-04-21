@@ -1,11 +1,10 @@
 import pygame
 import random
 import time
-import math
 
 class CardManager:
     def __init__(self):
-        self.card_options = ["def_random", "heal", "boom"]
+        self.card_options = ["def_random", "heal"]
         self.generated_cards = []
         self.last_card_time = time.time()
         self.card_interval = 15
@@ -52,8 +51,6 @@ class CardManager:
         for i, card in enumerate(reversed(self.generated_cards)):
             if card == "heal":
                 color = (0, 200, 0)
-            elif card == "boom":
-                color = (200, 0, 0)
             else:
                 color = (200, 200, 0)
             
@@ -90,23 +87,6 @@ class CardManager:
                     }
                     network.send(heal_msg)
                     self.generated_cards.remove(card)
-                elif card == "boom":
-                    if player_rect:
-                        center_x = player_rect.x + player_rect.width // 2
-                        center_y = player_rect.y + player_rect.height // 2
-                        
-                        boom_msg = {
-                            "type": "use_card",
-                            "card": "boom",
-                            "player_id": player_id,
-                            "x": center_x,
-                            "y": center_y
-                        }
-                        network.send(boom_msg)
-                        self.generated_cards.remove(card)
-                        self.is_exploding = True
-                        self.explosion_pos = (center_x, center_y)
-                        self.explosion_radius = 10
                 elif card == "def_random":
                     def_random_msg = {
                         "type": "use_card",

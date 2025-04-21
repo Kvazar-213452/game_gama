@@ -3,16 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ddddd</title>
+    <title>SPX</title>
     <link rel="stylesheet" href="/static/main.css">
 </head>
 <body>
     <div class="div">
-        <img class="palyer" src="/static/assets/suka/Idle_1.png" alt="">
-        <button class="button">ПРи єднатись</button>
-        <button class="button1">Створити хост</button>
-        <button class="button2">НАлаштування</button>
+        <p class="version">213452_82123</p>
+        <div class="class_player"><p>Нікто</p></div>
+        <img class="player">
+        <button onclick="modal_rener(0)" class="class_btn">Змінити клас</button>
+        <div class="jjj">
+            <button class="button">При єднатись</button>
+            <button class="button">Створити хост</button>
+            <button class="button">Налаштування</button>
+        </div>
+
+        <!-- modal -->
+
+        <div id="modal"> 
+            <div id="modal-content">
+                <button class="close_i" onclick="clos('modal')">Закрити</button>
+                <img class="player_modal">
+                <div class="info_modal_player">
+                    <p class="name" id="name"></p>
+                    <br>
+                    <p class="descripe" id="descripe"></p>
+                    <br>
+                    <p class="descripe_1" id="descripe_1"></p>
+                    <br><br>
+                    <p class="poison" id="neg"></p>
+                    <p class="poison" id="pos"></p>
+                    <p class="poison" id="pos_1"></p>
+                </div>
+        </div> 
     </div>
 </body>
+<script src="/static/jquery-3.7.1.min.js"></script>
 <script src="/static/main.js"></script>
+<script>
+    sendData();
+    modal_rener(0);
+</script>
 </html>
