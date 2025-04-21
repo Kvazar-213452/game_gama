@@ -11,7 +11,7 @@
         <p class="version">213452_82123</p>
         <div class="class_player"><p>Нікто</p></div>
         <img class="player">
-        <button onclick="modal_rener(0)" class="class_btn">Змінити клас</button>
+        <button onclick="modal_rener()" class="class_btn">Змінити клас</button>
         <div class="jjj">
             <button class="button">При єднатись</button>
             <button class="button">Створити хост</button>
@@ -24,6 +24,9 @@
             <div id="modal-content">
                 <button class="close_i" onclick="clos('modal')">Закрити</button>
                 <img class="player_modal">
+                <p class="palyer_info_clu"></p>
+                <button class="undwq">Вибрати</button>
+                <button onclick="nex_p()" class="undwq1">Далі</button>
                 <div class="info_modal_player">
                     <p class="name" id="name"></p>
                     <br>
@@ -42,6 +45,6 @@
 <script src="/static/main.js"></script>
 <script>
     sendData();
-    modal_rener(0);
+    modal_rener();
 </script>
 </html>

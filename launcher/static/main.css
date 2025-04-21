@@ -37,7 +37,9 @@
 
 .button:hover,
 .close_i:hover,
-.class_btn:hover {opacity: .5;}
+.class_btn:hover,
+.undwq1:hover,
+.undwq:hover {opacity: .5;}
 
 .jjj {
     position: absolute;
@@ -147,6 +149,38 @@
 #neg {color: #ff5d5d;}
 #pos,
 #pos_1 {color: #5afb52;}
+
+.undwq {
+    position: absolute;
+    top: 360px;
+    left: 70px;
+    border: none;
+    color: #000000;
+    background-color: #70fb69d6;
+    padding: 10px;
+    font-size: 15px;
+    cursor: pointer;
+    font-family: "MyCustomFont", sans-serif;
+}
+
+.undwq1 {
+    position: absolute;
+    top: 440px;
+    left: 85px;
+    border: none;
+    color: #f0f2f4;
+    background-color: #362f5e;
+    padding: 10px;
+    font-size: 15px;
+    cursor: pointer;
+    font-family: "MyCustomFont", sans-serif;
+}
+
+.palyer_info_clu {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
 
 /* modal */
 

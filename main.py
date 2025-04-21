@@ -13,7 +13,7 @@ class GameClient:
     def __init__(self, host, port):
         self.config = load_config()
         self.skin = self.config.get("skin", "eblan")
-        self.player_name = "test1"
+        self.player_name = "213452"
         #input("Enter your name: ")
         self.network = NetworkManager(host, port)
         

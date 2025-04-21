@@ -2,14 +2,16 @@ package main
 
 import (
 	"fmt"
+	"head/src"
 	"html/template"
 	"net/http"
 	"os"
+	"os/exec"
 )
 
 func main() {
-	// var cmd *exec.Cmd
-	// cmd = src.Start_shell(8080, "/")
+	var cmd *exec.Cmd
+	cmd = src.Start_shell(8080, "/")
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
@@ -43,7 +45,7 @@ func main() {
 	fmt.Println("Server is running on http://localhost" + port)
 	http.ListenAndServe(port, nil)
 
-	// if err := cmd.Process.Kill(); err != nil {
-	// 	fmt.Printf("not shell_web.exe: %v\n", err)
-	// }
+	if err := cmd.Process.Kill(); err != nil {
+		fmt.Printf("not shell_web.exe: %v\n", err)
+	}
 }
