@@ -5,7 +5,6 @@ from src.network_manager import NetworkManager
 from src.window_manager import WindowManager
 from src.leaderboard import LeaderboardRenderer
 from src.unix import load_config
-from src.card import CardManager
 from src.ui_renderer import UIRenderer
 from src.menu import Menu
 
@@ -31,7 +30,6 @@ class GameClient:
         self.leaderboard = LeaderboardRenderer()
         self.network.start_receive_thread(self.handle_message)
         
-        self.card_manager = CardManager()
         self.ui_renderer = UIRenderer()
         self.menu = Menu(screen_width, screen_height)
 
@@ -43,11 +41,6 @@ class GameClient:
                             self.player_name)
             self.player.update_from_data(message["player_data"])
 
-        elif message["type"] == "explosion":
-            self.card_manager.is_exploding = True
-            self.card_manager.explosion_pos = (message["x"], message["y"])
-            self.card_manager.explosion_radius = 10
-        
         elif message["type"] == "new_player":
             if message["player_id"] != getattr(self.player, 'id', None):
                 self.other_players[message["player_id"]] = Player(
@@ -85,12 +78,6 @@ class GameClient:
                 
                 if attacker and target:
                     print(f"{attacker.name} attacked {target.name}! HP: {message['hp']}")
-        
-        elif message["type"] == "player_death":
-            if message["player_id"] == getattr(self.player, 'id', None):
-                self.player.die()
-                if message.get("clear_cards", False):
-                    self.card_manager.generated_cards = []
         
         elif message["type"] == "player_respawn":
             if message["player_id"] in self.other_players:
@@ -155,7 +142,6 @@ class GameClient:
         self.cleanup()
 
     def update_game_states(self, dt):
-        self.card_manager.update_cards()
         self.leaderboard.update_surface()
 
     def handle_events(self):
@@ -179,18 +165,6 @@ class GameClient:
                 and not self.player.is_jumping 
                 and self.player.is_alive):
             self.player.jump()
-
-    def handle_mouse_click(self, event):
-        screen_width, screen_height = self.window.get_screen().get_size()
-        player_rect = self.player.rect if self.player else None
-        self.card_manager.handle_card_click(
-            event.pos,
-            screen_width,
-            screen_height,
-            getattr(self.player, 'id', None),
-            self.network,
-            player_rect
-        )
 
     def update_positions(self, platforms, dt):
         current_width, current_height = self.window.get_size()
@@ -227,25 +201,21 @@ class GameClient:
         if self.player and (self.player.is_alive or self.player.state == "death"):
             self.player.draw(screen, self.camera.get_offset())
             self.player.draw_ui(screen)
-
-        if self.player and (self.player.is_alive or self.player.state == "death"):
-            self.player.draw(screen, self.camera.get_offset())
-            self.player.renderer.draw_player_ui(self.player, screen, self.card_manager)
         
         self.draw_ui_elements(screen)
         self.menu.draw(screen)
 
         self.window.update_display()
 
+    def handle_mouse_click(self, event):
+        pass
+
     def draw_ui_elements(self, screen):
         self.leaderboard.draw(screen)
-        self.card_manager.draw_cards_and_timer(screen)
         all_players = {**self.other_players}
         if self.player:
             all_players[self.player.id] = self.player
         self.ui_renderer.draw_player_list(screen, all_players, getattr(self.player, 'id', None))
-
-        self.ui_renderer.draw_fps(screen, self.window.get_clock())
 
     def cleanup(self):
         self.network.close_connection()

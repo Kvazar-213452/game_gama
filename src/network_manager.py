@@ -13,7 +13,8 @@ class NetworkManager:
     def connect(self, player_name, skin):
         try:
             self.client.connect((self.host, self.port))
-            self.client.send(json.dumps({"name": player_name, "skin": skin}).encode('utf-8'))
+            # Надсилаємо JSON як текст
+            self.client.send((json.dumps({"name": player_name, "skin": skin}) + '\n').encode('utf-8'))
             return True
         except Exception as e:
             print(f"Connection error: {e}")
@@ -30,7 +31,7 @@ class NetworkManager:
     def _receive_data(self, message_handler):
         while self.running:
             try:
-                data = self.client.recv(1024).decode('utf-8')
+                data = self.client.recv(4096).decode('utf-8')  # Збільшено буфер
                 if not data:
                     break
                     

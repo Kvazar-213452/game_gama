@@ -6,7 +6,7 @@ import math
 import random
 
 class GameServer:
-    def __init__(self, host='26.168.243.99', port=5555):
+    def __init__(self, host='26.102.24.118', port=5555):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind((host, port))
@@ -61,7 +61,6 @@ class GameServer:
             "deaths": 0
         }
         
-        
         initial_data = {
             "type": "init",
             "player_id": player_id,
@@ -86,7 +85,7 @@ class GameServer:
         buffer = ""
         try:
             while self.running:
-                data = client.recv(1024).decode('utf-8')
+                data = client.recv(4096).decode('utf-8')
                 if not data:
                     break
                 
@@ -109,57 +108,6 @@ class GameServer:
                                     "player_id": player_id,
                                     "player_data": self.players[player_id]
                                 })
-                                
-                        elif message["type"] == "use_card":
-                            player_id = message["player_id"]
-                            card = message["card"]
-                            
-                            if player_id in self.players:
-                                if card == "heal":
-                                    self.players[player_id]["hp"] = min(
-                                        self.players[player_id].get("max_hp", 100),
-                                        self.players[player_id]["hp"] + 50
-                                    )
-                                    
-                                    self.broadcast({
-                                        "type": "hp_update",
-                                        "player_id": player_id,
-                                        "hp": self.players[player_id]["hp"]
-                                    })
-
-                                elif card == "def_random":
-                                    all_player_ids = list(self.players.keys())
-                                    if all_player_ids:
-                                        target_id = random.choice(all_player_ids)
-
-                                        self.players[target_id]["hp"] = 0
-                                        self.players[target_id]["is_alive"] = False
-                                        self.players[target_id]["death_timer"] = 5
-                                        self.players[target_id]["state"] = "death"
-                                        
-                                        killer_name = self.players[player_id].get("name", "Unknown")
-                                        victim_name = self.players[target_id].get("name", "Unknown")
-                                        
-                                        if player_id == target_id:
-                                            self.leaderboard[player_id]["deaths"] += 1
-                                        else:
-                                            self.leaderboard[player_id]["kills"] += 1
-                                            self.leaderboard[target_id]["deaths"] += 1
-                                        
-                                        self.broadcast({
-                                            "type": "leaderboard_update",
-                                            "leaderboard": self.get_sorted_leaderboard()
-                                        })
-                                        
-                                        self.broadcast({
-                                            "type": "player_death",
-                                            "player_id": target_id,
-                                            "respawn_time": 5,
-                                            "clear_cards": True
-                                        })
-                                        
-                                        print(f"{killer_name} викорав карту 'def_random' і вбив {victim_name}!")
-                                        threading.Timer(5, self.respawn_player, [target_id]).start()
 
                         elif message["type"] == "attack":
                             attacker_id = player_id

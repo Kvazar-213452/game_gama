@@ -1,0 +1,5 @@
+g++ -std=c++17 main.cpp animation.cpp player.cpp -o game -IC:/SFML/include -LC:/SFML/lib -static -static-libgcc -static-libstdc++ -lsfml-network -lsfml-system -lsfml-graphics -lsfml-window
+
+
+
+g++ -std=c++17 -DSFML_STATIC main.cpp animation.cpp player.cpp -o game.exe -IC:\SFML\include -LC:\SFML\lib -lsfml-graphics-s -lsfml-window-s -lsfml-system-s -lsfml-network-s -lfreetype -lopengl32 -lwinmm -lgdi32 -lws2_32
